@@ -1,1 +1,0 @@
-"""CARTA autoservice backend."""
