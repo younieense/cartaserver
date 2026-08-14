@@ -87,6 +87,14 @@ function renderMain() {
     buttons.push(menuBtn("ОТЧЕТЫ", () => navigate("reports")));
     buttons.push(menuBtn("АДМИНИСТРИРОВАНИЕ", () => navigate("admin")));
   }
+  buttons.push(
+    menuBtn("ВЫЙТИ", () => {
+      session.clearAuth();
+      ws.authenticated = false;
+      toast("Вы вышли");
+      navigate("login");
+    })
+  );
 
   return el("div", { class: "screen" }, [
     el("div", { class: "toolbar" }, [
