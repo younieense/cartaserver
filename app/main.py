@@ -19,7 +19,12 @@ from .ws import websocket_endpoint
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("carta")
 
-WEB_DIR = Path(__file__).resolve().parent.parent.parent / "web"
+_WEB_CANDIDATES = (
+    Path(__file__).resolve().parent.parent.parent / "web",  # repo root /web (dev)
+    Path(__file__).resolve().parent.parent / "web",  # /app/web (Docker)
+    Path("/app/web"),
+)
+WEB_DIR = next((p for p in _WEB_CANDIDATES if p.is_dir()), _WEB_CANDIDATES[0])
 
 
 async def shift_rollover_loop() -> None:
