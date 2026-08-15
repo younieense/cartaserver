@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import get_settings
 from .db import SessionLocal, init_db
-from .security import ensure_accountant_user, seed_if_empty
+from .security import ensure_admin_user, seed_if_empty
 from . import services
 from .ws import websocket_endpoint
 
@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
     await init_db()
     async with SessionLocal() as session:
         await seed_if_empty(session)
-        await ensure_accountant_user(session)
+        await ensure_admin_user(session)
         await services.ensure_current_shift(session)
     logger.info("Database ready (sqlite)")
     rollover_task = asyncio.create_task(shift_rollover_loop())

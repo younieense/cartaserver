@@ -5,6 +5,8 @@ services:
       dockerfile: Dockerfile
     container_name: carta-server
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       CARTA_HOST: "0.0.0.0"
       CARTA_PORT: "8443"
@@ -13,7 +15,6 @@ services:
       TZ: Europe/Moscow
     volumes:
       - carta_data:/app/data
-    # Снаружи с VPS смотрит только Nginx; с хоста — localhost
     ports:
       - "127.0.0.1:8443:8443"
 

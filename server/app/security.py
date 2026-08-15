@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import time as dtime
 from decimal import Decimal
 from pathlib import Path
@@ -9,7 +10,10 @@ import bcrypt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from .config import get_settings
 from .models import ExpenseCategory, ExpenseItem, MoneyVault, Position, User
+
+logger = logging.getLogger("carta.security")
 
 
 def hash_password(password: str) -> str:
@@ -27,32 +31,30 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 
 async def seed_if_empty(session: AsyncSession) -> None:
+    """Первичная инициализация БД: справочники + один суперпользователь из env."""
     users = (await session.execute(select(User).limit(1))).scalar_one_or_none()
     if users is not None:
         return
 
-    session.add_all(
-        [
-            User(
-                login="admin",
-                password_hash=hash_password("admin"),
-                display_name="Администратор",
-                role="superuser",
-            ),
-            User(
-                login="user",
-                password_hash=hash_password("user"),
-                display_name="Сотрудник",
-                role="user",
-            ),
-            User(
-                login="accountant",
-                password_hash=hash_password("accountant"),
-                display_name="Бухгалтер",
-                role="accountant",
-            ),
-        ]
+    settings = get_settings()
+    login = (settings.admin_login or "").strip()
+    password = settings.admin_password or ""
+    if not login or not password:
+        raise RuntimeError(
+            "База пуста: задайте ADMIN_LOGIN и ADMIN_PASSWORD в окружении "
+            "(или в файле .env), чтобы создать учётную запись администратора."
+        )
+
+    session.add(
+        User(
+            login=login,
+            password_hash=hash_password(password),
+            display_name=(settings.admin_display_name or login).strip() or login,
+            role="superuser",
+        )
     )
+    logger.info("Создан суперпользователь из ADMIN_LOGIN=%s", login)
+
     session.add(MoneyVault(name="Касса, наличные", is_cash=True, is_active=True))
     session.add(
         Position(
@@ -86,22 +88,33 @@ async def seed_if_empty(session: AsyncSession) -> None:
     await session.commit()
 
 
-async def ensure_accountant_user(session: AsyncSession) -> None:
-    """Create default accountant account on existing databases if missing."""
+async def ensure_admin_user(session: AsyncSession) -> None:
+    """
+    Если заданы ADMIN_LOGIN/ADMIN_PASSWORD и такого логина ещё нет — создать суперпользователя.
+    Старых admin/user/accountant не трогает (их можно удалить в админке).
+    """
+    settings = get_settings()
+    login = (settings.admin_login or "").strip()
+    password = settings.admin_password or ""
+    if not login or not password:
+        return
+
     existing = (
-        await session.execute(select(User).where(User.login == "accountant"))
+        await session.execute(select(User).where(User.login == login))
     ).scalar_one_or_none()
     if existing is not None:
         return
+
     session.add(
         User(
-            login="accountant",
-            password_hash=hash_password("accountant"),
-            display_name="Бухгалтер",
-            role="accountant",
+            login=login,
+            password_hash=hash_password(password),
+            display_name=(settings.admin_display_name or login).strip() or login,
+            role="superuser",
         )
     )
     await session.commit()
+    logger.info("Добавлен суперпользователь ADMIN_LOGIN=%s", login)
 
 
 def money(value) -> float | None:

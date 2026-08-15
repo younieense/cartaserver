@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     shift_open_hour: int = 5  # 05:00 local
     timezone: str = "Europe/Moscow"
 
+    # Первый / основной администратор (без дефолтных admin/user/accountant)
+    admin_login: str = ""
+    admin_password: str = ""
+    admin_display_name: str = "Администратор"
+
 
 @lru_cache
 def get_settings() -> Settings:

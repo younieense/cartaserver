@@ -176,3 +176,26 @@ sudo ufw enable
 ```
 
 Порт 8443 снаружи не открывать.
+
+## 9. Администратор (без дефолтных логинов)
+
+```bash
+cd /opt/CARTA
+cp .env.example .env
+nano .env
+# ADMIN_LOGIN=ваш_логин
+# ADMIN_PASSWORD=ваш_пароль
+docker compose up -d --build
+```
+
+Если БД уже со старыми `admin`/`user`/`accountant` и хотите **чистый старт**:
+
+```bash
+docker compose down
+docker volume ls | grep carta
+docker volume rm <имя_volume_с_данными>
+docker compose up -d --build
+```
+
+Либо оставьте данные: пропишите нового `ADMIN_*` в `.env`, перезапустите — пользователь создастся, если логина ещё нет; старых удалите в админке.
+
