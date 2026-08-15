@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     admin_login: str = ""
     admin_password: str = ""
     admin_display_name: str = "Администратор"
+    # Один раз: удалить логины admin/user/accountant из уже существующей БД
+    carta_purge_default_users: bool = False
 
 
 @lru_cache

@@ -91,7 +91,7 @@ async def seed_if_empty(session: AsyncSession) -> None:
 async def ensure_admin_user(session: AsyncSession) -> None:
     """
     Если заданы ADMIN_LOGIN/ADMIN_PASSWORD и такого логина ещё нет — создать суперпользователя.
-    Старых admin/user/accountant не трогает (их можно удалить в админке).
+    Старых admin/user/accountant не трогает (см. purge_default_users).
     """
     settings = get_settings()
     login = (settings.admin_login or "").strip()
@@ -115,6 +115,33 @@ async def ensure_admin_user(session: AsyncSession) -> None:
     )
     await session.commit()
     logger.info("Добавлен суперпользователь ADMIN_LOGIN=%s", login)
+
+
+DEMO_LOGINS = ("admin", "user", "accountant")
+
+
+async def purge_default_users(session: AsyncSession) -> None:
+    """Удаляет демо-логины admin/user/accountant, если CARTA_PURGE_DEFAULT_USERS=1."""
+    settings = get_settings()
+    if not settings.carta_purge_default_users:
+        return
+
+    keep = (settings.admin_login or "").strip().lower()
+    rows = (
+        await session.execute(select(User).where(User.login.in_(DEMO_LOGINS)))
+    ).scalars().all()
+    removed = []
+    for u in rows:
+        if u.login.lower() == keep:
+            # не удаляем, если ваш ADMIN_LOGIN совпадает с admin
+            continue
+        removed.append(u.login)
+        await session.delete(u)
+    if removed:
+        await session.commit()
+        logger.warning("Удалены демо-пользователи: %s", ", ".join(removed))
+    else:
+        logger.info("CARTA_PURGE_DEFAULT_USERS=1, демо-пользователей не найдено")
 
 
 def money(value) -> float | None:
